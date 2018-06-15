@@ -1,0 +1,9 @@
+prefix=/usr/local
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: smallfry
+Description: Lib Smallfry metric for JPEG Optimization 
+Version: 0.0.1
+Libs: -L${libdir} -lsmallfry -lm
+Cflags: -I${includedir}
