@@ -18,5 +18,6 @@
 #define SMALLFLY_METRIC_H
 
 double smallfry_metric(uint8_t *inbuf, uint8_t *outbuf, int width, int height);
+double sharpenbad_metric(uint8_t *inbuf, uint8_t *outbuf, int width, int height);
 
 #endif SMALLFLY_METRIC_H
