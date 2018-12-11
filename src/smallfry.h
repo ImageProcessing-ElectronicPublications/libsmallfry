@@ -17,7 +17,10 @@
 #ifndef SMALLFLY_METRIC_H
 #define SMALLFLY_METRIC_H
 
-double smallfry_metric(uint8_t *inbuf, uint8_t *outbuf, int width, int height);
-double sharpenbad_metric(uint8_t *inbuf, uint8_t *outbuf, int width, int height);
+double metric_smallfry (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
+double metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
+double metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
+double metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, int radius);
+double cor_sigma (double cor);
 
-#endif SMALLFLY_METRIC_H
+#endif // SMALLFLY_METRIC_H //

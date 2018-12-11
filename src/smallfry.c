@@ -23,8 +23,7 @@
 #define MAX(a, b) (a > b ? a : b)
 #define MIN(a, b) (a < b ? a : b)
 
-static double psnr_factor(uint8_t *orig, uint8_t *cmp, int orig_stride,
-                          int cmp_stride, int width, int height, uint8_t max)
+static double factor_psnr (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_stride, int width, int height, uint8_t max)
 {
     uint8_t *old, *new;
     double ret;
@@ -35,7 +34,8 @@ static double psnr_factor(uint8_t *orig, uint8_t *cmp, int orig_stride,
     old = orig;
     new = cmp;
 
-    for (i = 0; i < height; i++) {
+    for (i = 0; i < height; i++)
+    {
         for (j = 0; j < width; j++)
             sum += (old[j] - new[j]) * (old[j] - new[j]);
 
@@ -56,8 +56,8 @@ static double psnr_factor(uint8_t *orig, uint8_t *cmp, int orig_stride,
 
 #define DVAL(i) (abs(old[i] - new[i]))
 #define HDVAL(i,j) (abs(old[i + j * orig_stride] - new[i + j * cmp_stride]))
-static double aae_factor(uint8_t *orig, uint8_t *cmp, int orig_stride,
-                         int cmp_stride, int width, int height, uint8_t max)
+
+static double factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_stride, int width, int height, uint8_t max)
 {
     uint8_t *old, *new;
     double ret;
@@ -71,8 +71,10 @@ static double aae_factor(uint8_t *orig, uint8_t *cmp, int orig_stride,
     old = orig;
     new = cmp;
 
-    for (i = 0; i < height; i++) {
-        for (j = 7; j < width - 1; j += 8) {
+    for (i = 0; i < height; i++)
+    {
+        for (j = 7; j < width - 1; j += 8)
+        {
             double calc;
 
             cnt++;
@@ -93,8 +95,10 @@ static double aae_factor(uint8_t *orig, uint8_t *cmp, int orig_stride,
     old = orig + 7 * orig_stride;
     new = cmp  + 7 * cmp_stride;
 
-    for (i = 7; i < height - 1; i += 8) {
-        for (j = 0; j < width; j++) {
+    for (i = 7; i < height - 1; i += 8)
+    {
+        for (j = 0; j < width; j++)
+        {
             double calc;
 
             cnt++;
@@ -124,13 +128,14 @@ static double aae_factor(uint8_t *orig, uint8_t *cmp, int orig_stride,
     return ret * cf;
 }
 
-static uint8_t maxluma(uint8_t *buf, int stride, int width, int height)
+static uint8_t maxluma (uint8_t *buf, int stride, int width, int height)
 {
     uint8_t *in = buf;
     uint8_t max = 0;
     int i, j;
 
-    for (i = 0; i < height; i++) {
+    for (i = 0; i < height; i++)
+    {
         for (j = 0; j < width; j++)
             max = MAX(in[j], max);
 
@@ -140,28 +145,28 @@ static uint8_t maxluma(uint8_t *buf, int stride, int width, int height)
     return max;
 }
 
-double smallfry_metric(uint8_t *inbuf, uint8_t *outbuf, int width, int height)
+double metric_smallfry (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
 {
     double p, a, b;
     uint8_t max;
 
     max = maxluma(inbuf, width, width, height);
 
-    p = psnr_factor(inbuf, outbuf, width, width, width, height, max);
-    a = aae_factor(inbuf, outbuf, width, width, width, height, max);
+    p = factor_psnr(inbuf, outbuf, width, width, width, height, max);
+    a = factor_aae(inbuf, outbuf, width, width, width, height, max);
 
     b = p * 37.1891885161239 + a * 78.5328607296973;
 
     return b;
 }
 
-double sharpenbad_metric(uint8_t *inbuf, uint8_t *outbuf, int width, int height)
+double metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
 {
     uint8_t *old, *new;
     double sharpenbad, exp1n, k332, k255p;
     double im1, im2, imf1, imf2, ims1, ims2, imd, imd1, imd2, imdc;
     double sumd, sumd1, sumd2, sumdc;
-    int i, j, i0, j0, i1, j1, i2, j2, k, ki, k1, ki1, n;
+    int i, j, i0, j0, i1, j1, i2, j2, k, ki0, ki, kj, n;
 
     old = inbuf;
     new = outbuf;
@@ -173,37 +178,38 @@ double sharpenbad_metric(uint8_t *inbuf, uint8_t *outbuf, int width, int height)
     k332 = (3.0 * 3.0 * 2.0 + 1.0) / (3.0 * 3.0 * 2.0 - 1.0);
     k255p = 1.0 / 255.0;
 
+    k = 0;
     for (i = 0; i < height; i++)
     {
         i0 = i - 1;
         if (i0 < 0) {i0 = 0;}
         i2 = i + 2;
         if (i2 > height) {i2 = height;}
-        ki = i * width;
+        ki0 = i0 * width;
         for (j = 0; j < width; j++)
         {
             j0 = j - 1;
             if (j0 < 0) {j0 = 0;}
             j2 = j + 2;
             if (j2 > width) {j2 = width;}
-            k = ki + j;
             im1 = (double)old[k];
             im2 = (double)new[k];
             n = 0;
             ims1 = 0.0;
             ims2 = 0.0;
+            ki = ki0;
             for (i1 = i0; i1 < i2; i1++)
             {
-                ki1 = i1 * width;
                 for (j1 = j0; j1 < j2; j1++)
                 {
-                    k1 = ki1 + j1;
-                    imf1 = (double)old[k1];
+                    kj = ki + j1;
+                    imf1 = (double)old[kj];
                     ims1 += imf1;
-                    imf2 = (double)new[k1];
+                    imf2 = (double)new[kj];
                     ims2 += imf2;
                     n++;
                 }
+                ki += width;
             }
             ims1 /= (double)n;
             ims2 /= (double)n;
@@ -223,6 +229,7 @@ double sharpenbad_metric(uint8_t *inbuf, uint8_t *outbuf, int width, int height)
             sumd1 += imd1;
             sumd2 += imd2;
             sumdc += imdc;
+            k++;
         }
     }
     sumd2 *= sumd1;
@@ -244,4 +251,157 @@ double sharpenbad_metric(uint8_t *inbuf, uint8_t *outbuf, int width, int height)
     sharpenbad = sumd;
     
     return sharpenbad;
+}
+
+double metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
+{
+    uint8_t *old, *new;
+    double im1, im2;
+    double sum1, sum2, sum12, sumq1, sumq2, sumq, cor;
+    int k, n;
+
+    old = inbuf;
+    new = outbuf;
+    n = width * height;
+    
+    sum1 = 0;
+    sum2 = 0;
+    for (k = 0; k < n; k++)
+    {
+        im1 = (double)old[k];
+        im2 = (double)new[k];
+        sum1 += im1;
+        sum2 += im2;
+    }
+    sum1 /= (double)n;
+    sum2 /= (double)n;
+
+    sum12 = 0.0;
+    sumq1 = 0.0;
+    sumq2 = 0.0;
+    for (k = 0; k < n; k++)
+    {
+        im1 = (double)old[k];
+        im1 -= sum1;
+        im2 = (double)new[k];
+        im2 -= sum2;
+        sum12 += (im1 * im2);
+        sumq1 += (im1 * im1);
+        sumq2 += (im2 * im2);
+    }
+    sumq = sqrt(sumq1 * sumq2);
+    if (sumq == 0)
+    {
+        if (sumq1 == sumq2) {cor = 1;} else {cor = 0;}
+    } else {
+        cor = sum12 / sumq;
+    }
+    if (cor < 0) cor = -cor;
+    
+    return cor;
+}
+
+double metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, int radius)
+{
+    uint8_t *old, *new;
+    double im1, im2, imf1, imf2, ims1, ims2;
+    double sum1, sum2, sum12, sumq1, sumq2, sumq, cor;
+    int i, j, i0, j0, i1, j1, i2, j2, k, ki0, ki, kj, n;
+
+    old = inbuf;
+    new = outbuf;
+    n = width * height;
+    if (radius < 0) {radius = -radius;}
+    
+    sum1 = 0;
+    sum2 = 0;
+    for (k = 0; k < n; k++)
+    {
+        im1 = (double)old[k];
+        im2 = (double)new[k];
+        sum1 += im1;
+        sum2 += im2;
+    }
+    sum1 /= (double)n;
+    sum2 /= (double)n;
+
+    k = 0;
+    sum12 = 0.0;
+    sumq1 = 0.0;
+    sumq2 = 0.0;
+    for (i = 0; i < height; i++)
+    {
+        i0 = i - radius;
+        if (i0 < 0) {i0 = 0;}
+        i2 = i + radius + 1;
+        if (i2 > height) {i2 = height;}
+        ki0 = i0 * width;
+        for (j = 0; j < width; j++)
+        {
+            j0 = j - radius;
+            if (j0 < 0) {j0 = 0;}
+            j2 = j + radius + 1;
+            if (j2 > width) {j2 = width;}
+            im1 = (double)old[k];
+            im2 = (double)new[k];
+            n = 0;
+            ims1 = 0.0;
+            ims2 = 0.0;
+            ki = ki0;
+            for (i1 = i0; i1 < i2; i1++)
+            {
+                for (j1 = j0; j1 < j2; j1++)
+                {
+                    kj = ki + j1;
+                    imf1 = (double)old[kj];
+                    ims1 += imf1;
+                    imf2 = (double)new[kj];
+                    ims2 += imf2;
+                    n++;
+                }
+                ki += width;
+            }
+            ims1 /= (double)n;
+            ims2 /= (double)n;
+            im1 *= 2;
+            im1 -= ims1;
+            im1 -= sum1;
+            im2 *= 2;
+            im2 -= ims2;
+            im2 -= sum2;
+            sum12 += (im1 * im2);
+            sumq1 += (im1 * im1);
+            sumq2 += (im2 * im2);
+            k++;
+        }
+    }
+    sumq = sqrt(sumq1 * sumq2);
+    if (sumq == 0)
+    {
+        if (sumq1 == sumq2) {cor = 1;} else {cor = 0;}
+    } else {
+        cor = sum12 / sumq;
+    }
+    if (cor < 0) cor = -cor;
+    
+    return cor;
+}
+
+double cor_sigma (double cor)
+{
+    double sigma;
+    
+    
+    if (cor < 0) {cor = -cor;}
+    sigma = cor;
+    if (cor > 1)
+    {
+        cor = 1 / cor;
+        sigma = 1 - sqrt(1 - cor * cor);
+        sigma = 1 / sigma;
+    } else {
+        sigma = 1 - sqrt(1 - cor * cor);
+    }
+    
+    return sigma;
 }
