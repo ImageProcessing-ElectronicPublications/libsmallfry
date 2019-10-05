@@ -20,8 +20,8 @@
 
 #include "smallfry.h"
 
-#define MAX(a, b) (a > b ? a : b)
-#define MIN(a, b) (a < b ? a : b)
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 static double factor_psnr (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_stride, int width, int height, uint8_t max)
 {
@@ -54,9 +54,6 @@ static double factor_psnr (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp
     return MAX(MIN(ret, 1.0), 0.0);
 }
 
-#define DVAL(i) (abs(old[i] - new[i]))
-#define HDVAL(i,j) (abs(old[i + j * orig_stride] - new[i + j * cmp_stride]))
-
 static double factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_stride, int width, int height, uint8_t max)
 {
     uint8_t *old, *new;
@@ -73,14 +70,27 @@ static double factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_
 
     for (i = 0; i < height; i++)
     {
-        for (j = 7; j < width - 1; j += 8)
+        for (j = 7; j < width - 2; j += 8)
         {
+            int o0, n0, o1h, n1h, o1nh, n1nh, o2h, n2h, d0, d1h, d1nh, d2h;
             double calc;
 
             cnt++;
 
-            calc  = abs(DVAL(j) - DVAL(j + 1));
-            calc /= (abs(DVAL(j - 1) - DVAL(j)) + abs(DVAL(j + 1) - DVAL(j + 2)) + 0.0001) / 2.0;
+            o0 = (int)old[j];
+            n0 = (int)new[j];
+            d0 = abs(o0 - n0);
+            o1h = (int)old[j + 1];
+            n1h = (int)new[j + 1];
+            d1h = abs(o1h - n1h);
+            o1nh = (int)old[j - 1];
+            n1nh = (int)new[j - 1];
+            d1nh = abs(o1nh - n1nh);
+            o2h = (int)old[j + 2];
+            n2h = (int)new[j + 2];
+            d2h = abs(o2h - n2h);
+            calc  = abs(d0 - d1h);
+            calc /= (0.0001 + abs(d1nh - d0) + abs(d1h - d2h)) / 2.0;
 
             if (calc > 5.0)
                 sum += 1.0;
@@ -95,16 +105,29 @@ static double factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_
     old = orig + 7 * orig_stride;
     new = cmp  + 7 * cmp_stride;
 
-    for (i = 7; i < height - 1; i += 8)
+    for (i = 7; i < height - 2; i += 8)
     {
         for (j = 0; j < width; j++)
         {
+            int o0, n0, o1v, n1v, o1nv, n1nv, o2v, n2v, d0, d1v, d1nv, d2v;
             double calc;
 
             cnt++;
 
-            calc  = abs(DVAL(j) - HDVAL(j, 1));
-            calc /= (abs(HDVAL(j, -1) - DVAL(j)) + abs(HDVAL(j, 1) - HDVAL(j, 2)) + 0.0001) / 2.0;
+            o0 = (int)old[j];
+            n0 = (int)new[j];
+            d0 = abs(o0 - n0);
+            o1v = (int)old[j + orig_stride];
+            n1v = (int)new[j + orig_stride];
+            d1v = abs(o1v - n1v);
+            o1nv = (int)old[j - orig_stride];
+            n1nv = (int)new[j - orig_stride];
+            d1nv = abs(o1nv - n1nv);
+            o2v = (int)old[j + orig_stride + orig_stride];
+            n2v = (int)new[j + orig_stride + orig_stride];
+            d2v = abs(o2v - n2v);
+            calc  = abs(d0 - d1v);
+            calc /= (0.0001 + abs(d1nv - d0) + abs(d1v - d2v)) / 2.0;
 
             if (calc > 5.0)
                 sum += 1.0;
@@ -115,7 +138,7 @@ static double factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_
         old += 8 * orig_stride;
         new += 8 * cmp_stride;
     }
-    
+
     ret = 1 - (sum / (double) cnt);
 
     if (max > 128)
@@ -123,7 +146,7 @@ static double factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_
     else
         cfmax = 0.65 + 0.35 * ((128.0 - (double) max) / 128.0);
 
-    cf = MAX(cfmax, MIN(1, 0.25 + (1000.0 * (double) cnt) / sum));
+    cf = MAX(cfmax, MIN(1.0, 0.25 + (1000.0 * (double) cnt) / sum));
 
     return ret * cf;
 }
@@ -233,7 +256,7 @@ double metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height
         }
     }
     sumd2 *= sumd1;
-    if (sumd2 != 0.0)
+    if (sumd2 > 0.0)
     {
         sumd /= sumd2;
         sumd *= sumdc;
@@ -247,9 +270,9 @@ double metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height
     sumd = -sumd;
     sumd *= exp1n;
     sumd += k332;
-    
+
     sharpenbad = sumd;
-    
+
     return sharpenbad;
 }
 
@@ -263,7 +286,7 @@ double metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
     old = inbuf;
     new = outbuf;
     n = width * height;
-    
+
     sum1 = 0;
     sum2 = 0;
     for (k = 0; k < n; k++)
@@ -290,14 +313,14 @@ double metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
         sumq2 += (im2 * im2);
     }
     sumq = sqrt(sumq1 * sumq2);
-    if (sumq == 0)
+    if (sumq > 0.0)
     {
-        if (sumq1 == sumq2) {cor = 1;} else {cor = 0;}
-    } else {
         cor = sum12 / sumq;
+    } else {
+        cor = (sumq1 == sumq2) ? 1.0 : 0.0;
     }
-    if (cor < 0) cor = -cor;
-    
+    cor = (cor < 0.0) ? -cor : cor;
+
     return cor;
 }
 
@@ -312,7 +335,7 @@ double metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, 
     new = outbuf;
     n = width * height;
     if (radius < 0) {radius = -radius;}
-    
+
     sum1 = 0;
     sum2 = 0;
     for (k = 0; k < n; k++)
@@ -376,32 +399,32 @@ double metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, 
         }
     }
     sumq = sqrt(sumq1 * sumq2);
-    if (sumq == 0)
+    if (sumq > 0.0)
     {
-        if (sumq1 == sumq2) {cor = 1;} else {cor = 0;}
-    } else {
         cor = sum12 / sumq;
+    } else {
+        cor = (sumq1 == sumq2) ? 1.0 : 0.0;
     }
-    if (cor < 0) cor = -cor;
-    
+    cor = (cor < 0.0) ? -cor : cor;
+
     return cor;
 }
 
 double cor_sigma (double cor)
 {
     double sigma;
-    
-    
-    if (cor < 0) {cor = -cor;}
+
+
+    cor = (cor < 0.0) ? -cor : cor;
     sigma = cor;
-    if (cor > 1)
+    if (cor > 1.0)
     {
-        cor = 1 / cor;
-        sigma = 1 - sqrt(1 - cor * cor);
-        sigma = 1 / sigma;
+        cor = 1.0 / cor;
+        sigma = 1.0 - sqrt(1.0 - cor * cor);
+        sigma = 1.0 / sigma;
     } else {
-        sigma = 1 - sqrt(1 - cor * cor);
+        sigma = 1.0 - sqrt(1.0 - cor * cor);
     }
-    
+
     return sigma;
 }

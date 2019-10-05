@@ -10,7 +10,7 @@ RMDIR = @rm -frv
 PLIB = lib$(PNAME)
 VERSION_MAJOR = 0
 VERSION_MINOR = 0
-VERSION_RELEASE = 2
+VERSION_RELEASE = 4
 PREFIX = /usr/local
 INCPREFIX = $(PREFIX)/include
 LIBPREFIX = $(PREFIX)/lib
@@ -27,7 +27,7 @@ $(PLIB).a: $(LIBOBJ)
 	$(ARC) $@ $(LIBOBJ)
 
 $(PLIB).so: $(LIBOBJ)
-	$(CC) -Wl,-soname,$@.$(VERSION_MAJOR) -shared -o $@ $^ $(LDFLAGS) $(LIBS)
+	$(CC) $(CFLAGS) -shared -Wl,-soname,$@.$(VERSION_MAJOR) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 lib: $(PLIB).a $(PLIB).so
 

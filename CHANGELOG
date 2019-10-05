@@ -1,3 +1,9 @@
+0.0.4
+
+    Verify version:
+      cppcheck
+      splint
+
 0.0.3
 
     Expand Version:
