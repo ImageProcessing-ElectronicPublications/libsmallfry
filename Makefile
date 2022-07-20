@@ -21,6 +21,10 @@ SRCDIR=./src
 SRC= $(SRCDIR)/smallfry.c
 LIBOBJ = $(SRC:.c=.o)
 
+ifneq ($(shell uname -m), i386)
+    CFLAGS += -fPIC
+endif
+
 all: lib
 
 $(PLIB).a: $(LIBOBJ)

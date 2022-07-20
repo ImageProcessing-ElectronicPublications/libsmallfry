@@ -1,4 +1,10 @@
-## LibSmallFry ##
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/ImageProcessing-ElectronicPublications/libsmallfry)
+![GitHub Release Date](https://img.shields.io/github/release-date/ImageProcessing-ElectronicPublications/libsmallfry)
+![GitHub repo size](https://img.shields.io/github/repo-size/ImageProcessing-ElectronicPublications/libsmallfry)
+![GitHub all releases](https://img.shields.io/github/downloads/ImageProcessing-ElectronicPublications/libsmallfry/total)
+![GitHub](https://img.shields.io/github/license/ImageProcessing-ElectronicPublications/libsmallfry)
+
+# LibSmallFry
 
 The SmallFry metrics library is based on the optimizer jpeg [SmallFry](https://github.com/dwbuiten/smallfry).
 The SmallFry metric is specially designed for the jpeg algorithm.
