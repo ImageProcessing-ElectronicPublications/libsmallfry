@@ -1,8 +1,17 @@
+libsmallfry.
+
+0.1.0
+
+    Expand Version:
+      metric_nhw
+    2022, zvezdochiot
+
 0.0.4
 
     Verify version:
       cppcheck
       splint
+    2019, zvezdochiot
 
 0.0.3
 

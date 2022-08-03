@@ -17,10 +17,11 @@
 #ifndef SMALLFLY_METRIC_H
 #define SMALLFLY_METRIC_H
 
-double metric_smallfry (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
-double metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
-double metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
-double metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, int radius);
-double cor_sigma (double cor);
+float metric_smallfry (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
+float metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
+float metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
+float metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, int radius);
+float metric_nhw (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
+float cor_sigma (float cor);
 
 #endif // SMALLFLY_METRIC_H //

@@ -15,11 +15,11 @@ If you want a nice graphical interface and simplified automation of batch proces
 
 **Update**
 
-In addition to the SmallFry metric, this library contains the SharpenBad metric, not jpeg-oriented, but more general.
-This metric, though more labor-intensive than SmallFry, but well reflects both the visual quality of the image, and the "badness" of its further processing.
-The complexity of this metric is due to the use of the Sharpen filter.
+In addition to the SmallFry metric, this library contains the SharpenBad and NHW metrics, not jpeg-oriented, but more general.
+These metrics, though more labor-intensive than SmallFry, but well reflects both the visual quality of the image, and the "badness" of its further processing.
+The complexity of these metrics is due to the use of the Sharpen filter.
 
 ---  
-2018  
+2022  
 zvezdochiot  
 https://github.com/zvezdochiot/libsmallfry  
