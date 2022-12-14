@@ -188,22 +188,26 @@ float metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
     uint8_t *old, *new;
     float sharpenbad, exp1n, k332, k255p;
     float im1, im2, imf1, imf2, ims1, ims2, imd, imd1, imd2, imdc;
-    float sumd, sumd1, sumd2, sumdc;
+    float sumd, sumd1, sumd2, sumdc, sumdl, sumd1l, sumd2l, sumdcl;
     int i, j, i0, j0, i1, j1, i2, j2, k, ki0, ki, kj, n;
 
     old = inbuf;
     new = outbuf;
-    sumd = 0.0;
-    sumd1 = 0.0f;
-    sumd2 = 0.0f;
-    sumdc = 0.0f;
     exp1n = exp(-1);
     k332 = (3.0f * 3.0f * 2.0f + 1.0f) / (3.0f * 3.0f * 2.0f - 1.0f);
     k255p = 1.0f / 255.0f;
 
     k = 0;
+    sumd = 0.0f;
+    sumd1 = 0.0f;
+    sumd2 = 0.0f;
+    sumdc = 0.0f;
     for (i = 0; i < height; i++)
     {
+        sumdl = 0.0f;
+        sumd1l = 0.0f;
+        sumd2l = 0.0f;
+        sumdcl = 0.0f;
         i0 = i - 1;
         if (i0 < 0) {i0 = 0;}
         i2 = i + 2;
@@ -248,12 +252,16 @@ float metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
             imdc = imd1 * imd2;
             imd1 *= imd1;
             imd2 *= imd2;
-            sumd += imd;
-            sumd1 += imd1;
-            sumd2 += imd2;
-            sumdc += imdc;
+            sumdl += imd;
+            sumd1l += imd1;
+            sumd2l += imd2;
+            sumdcl += imdc;
             k++;
         }
+        sumd += sumdl;
+        sumd1 += sumd1l;
+        sumd2 += sumd2l;
+        sumdc += sumdcl;
     }
     sumd2 *= sumd1;
     if (sumd2 > 0.0f)
@@ -280,37 +288,58 @@ float metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
 {
     uint8_t *old, *new;
     float im1, im2;
-    float sum1, sum2, sum12, sumq1, sumq2, sumq, cor;
-    int k, n;
+    float sum1, sum2, sum1l, sum2l;
+    float sum12, sumq1, sumq2, sum12l, sumq1l, sumq2l, sumq, cor;
+    int i, j, k, n;
 
     old = inbuf;
     new = outbuf;
     n = width * height;
 
-    sum1 = 0;
-    sum2 = 0;
-    for (k = 0; k < n; k++)
+    k = 0;
+    sum1 = 0.0f;
+    sum2 = 0.0f;
+    for (i = 0; i < height; i++)
     {
-        im1 = (float)old[k];
-        im2 = (float)new[k];
-        sum1 += im1;
-        sum2 += im2;
+        sum1l = 0.0f;
+        sum2l = 0.0f;
+        for (j = 0; j < width; j++)
+        {
+            im1 = (float)old[k];
+            im2 = (float)new[k];
+            sum1l += im1;
+            sum2l += im2;
+            k++;
+        }
+        sum1 += sum1l;
+        sum2 += sum2l;
     }
     sum1 /= (float)n;
     sum2 /= (float)n;
 
+    k = 0;
     sum12 = 0.0f;
     sumq1 = 0.0f;
     sumq2 = 0.0f;
-    for (k = 0; k < n; k++)
+    for (i = 0; i < height; i++)
     {
-        im1 = (float)old[k];
-        im1 -= sum1;
-        im2 = (float)new[k];
-        im2 -= sum2;
-        sum12 += (im1 * im2);
-        sumq1 += (im1 * im1);
-        sumq2 += (im2 * im2);
+        sum12l = 0.0f;
+        sumq1l = 0.0f;
+        sumq2l = 0.0f;
+        for (j = 0; j < width; j++)
+        {
+            im1 = (float)old[k];
+            im1 -= sum1;
+            im2 = (float)new[k];
+            im2 -= sum2;
+            sum12l += (im1 * im2);
+            sumq1l += (im1 * im1);
+            sumq2l += (im2 * im2);
+            k++;
+        }
+        sum12 += sum12l;
+        sumq1 += sumq1l;
+        sumq2 += sumq2l;
     }
     sumq = sqrt(sumq1 * sumq2);
     if (sumq > 0.0f)
@@ -328,7 +357,8 @@ float metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, i
 {
     uint8_t *old, *new;
     float im1, im2, imf1, imf2, ims1, ims2;
-    float sum1, sum2, sum12, sumq1, sumq2, sumq, cor;
+    float sum1, sum2, sum1l, sum2l;
+    float sum12, sumq1, sumq2, sum12l, sumq1l, sumq2l, sumq, cor;
     int i, j, i0, j0, i1, j1, i2, j2, k, ki0, ki, kj, n;
 
     old = inbuf;
@@ -336,14 +366,23 @@ float metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, i
     n = width * height;
     if (radius < 0) {radius = -radius;}
 
-    sum1 = 0;
-    sum2 = 0;
-    for (k = 0; k < n; k++)
+    k = 0;
+    sum1 = 0.0f;
+    sum2 = 0.0f;
+    for (i = 0; i < height; i++)
     {
-        im1 = (float)old[k];
-        im2 = (float)new[k];
-        sum1 += im1;
-        sum2 += im2;
+        sum1l = 0.0f;
+        sum2l = 0.0f;
+        for (j = 0; j < width; j++)
+        {
+            im1 = (float)old[k];
+            im2 = (float)new[k];
+            sum1l += im1;
+            sum2l += im2;
+            k++;
+        }
+        sum1 += sum1l;
+        sum2 += sum2l;
     }
     sum1 /= (float)n;
     sum2 /= (float)n;
@@ -354,6 +393,9 @@ float metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, i
     sumq2 = 0.0f;
     for (i = 0; i < height; i++)
     {
+        sum12l = 0.0f;
+        sumq1l = 0.0f;
+        sumq2l = 0.0f;
         i0 = i - radius;
         if (i0 < 0) {i0 = 0;}
         i2 = i + radius + 1;
@@ -392,11 +434,14 @@ float metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, i
             im2 *= 2.0f;
             im2 -= ims2;
             im2 -= sum2;
-            sum12 += (im1 * im2);
-            sumq1 += (im1 * im1);
-            sumq2 += (im2 * im2);
+            sum12l += (im1 * im2);
+            sumq1l += (im1 * im1);
+            sumq2l += (im2 * im2);
             k++;
         }
+        sum12 += sum12l;
+        sumq1 += sumq1l;
+        sumq2 += sumq2l;
     }
     sumq = sqrt(sumq1 * sumq2);
     if (sumq > 0.0f)
@@ -461,8 +506,8 @@ float metric_nhw (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
 {
     uint8_t *old, *new;
     int i, j, res, resr, resd, scan, delta;
-    int significance = 0;
-    float neatness_amount = 0.0f, neatness;
+    float amount = 0.0f, significance = 0.0f, neatness;
+    float amountl = 0.0f, significancel = 0.0f;
 
     old = inbuf;
     new = outbuf;
@@ -470,6 +515,8 @@ float metric_nhw (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
     scan = 0;
     for (i = 0; i < height; i++)
     {
+        amountl = 0.0f;
+        significancel = 0.0f;
         for (j = 0; j < width; j++)
         {
             res = pix_sharpen3 (new, width, height, i, j, scan);
@@ -480,14 +527,16 @@ float metric_nhw (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
                 delta = abs(new[scan] - old[scan]);
                 if (delta > 0)
                 {
-                    neatness_amount += (delta * delta) * resd;
-                    significance += resd;
+                    amountl += (delta * delta) * resd;
                 }
+                significancel += resd;
             }
             scan++;
         }
+        amount += amountl;
+        significance += significancel;
     }
-    neatness = (float)((significance > 0) ? ((float)(neatness_amount)/(float)(significance)) : 1.0f);
+    neatness = (significance > 0.0f) ? (amount / significance) : 1.0f;
 
     return neatness;
 }
