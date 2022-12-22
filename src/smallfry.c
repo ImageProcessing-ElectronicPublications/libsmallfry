@@ -22,6 +22,7 @@
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define LIBSMALLFRYVERSION "0.1.2"
 
 static float factor_psnr (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_stride, int width, int height, uint8_t max)
 {
@@ -289,7 +290,7 @@ float metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
     uint8_t *old, *new;
     float im1, im2;
     float sum1, sum2, sum1l, sum2l;
-    float sum12, sumq1, sumq2, sum12l, sumq1l, sumq2l, sumq, cor;
+    float sum12, sumq1, sumq2, q12, sum12l, sumq1l, sumq2l, sumq, cor;
     int i, j, k, n;
 
     old = inbuf;
@@ -332,7 +333,9 @@ float metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
             im1 -= sum1;
             im2 = (float)new[k];
             im2 -= sum2;
-            sum12l += (im1 * im2);
+            q12 = (im1 * im2);
+            q12 = (q12 < 0.0f) ? -q12 : q12;
+            sum12l += q12;
             sumq1l += (im1 * im1);
             sumq2l += (im2 * im2);
             k++;
@@ -358,7 +361,7 @@ float metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, i
     uint8_t *old, *new;
     float im1, im2, imf1, imf2, ims1, ims2;
     float sum1, sum2, sum1l, sum2l;
-    float sum12, sumq1, sumq2, sum12l, sumq1l, sumq2l, sumq, cor;
+    float sum12, sumq1, sumq2, q12, sum12l, sumq1l, sumq2l, sumq, cor;
     int i, j, i0, j0, i1, j1, i2, j2, k, ki0, ki, kj, n;
 
     old = inbuf;
@@ -434,7 +437,9 @@ float metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, i
             im2 *= 2.0f;
             im2 -= ims2;
             im2 -= sum2;
-            sum12l += (im1 * im2);
+            q12 = (im1 * im2);
+            q12 = (q12 < 0.0f) ? -q12 : q12;
+            sum12l += q12;
             sumq1l += (im1 * im1);
             sumq2l += (im2 * im2);
             k++;
@@ -539,4 +544,9 @@ float metric_nhw (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
     neatness = (significance > 0.0f) ? (amount / significance) : 1.0f;
 
     return neatness;
+}
+
+char* libsmallfry_version (void)
+{
+	return (char*) LIBSMALLFRYVERSION;
 }

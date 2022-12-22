@@ -4,6 +4,6 @@ includedir=${prefix}/include
 
 Name: smallfry
 Description: Library Smallfry metric for JPEG Optimization 
-Version: 0.1.1
+Version: 0.1.2
 Libs: -L${libdir} -lsmallfry -lm
 Cflags: -I${includedir}
