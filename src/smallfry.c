@@ -14,37 +14,40 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "smallfry.h"
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define LIBSMALLFRYVERSION "0.1.2"
+#define LIBSMALLFRYVERSION "0.1.3"
 
 static float factor_psnr (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_stride, int width, int height, uint8_t max)
 {
     uint8_t *old, *new;
-    float ret;
-    int sum;
+    float delta, suml, sum, ret;
     int i, j;
 
-    sum = 0;
     old = orig;
     new = cmp;
 
+    sum = 0.0f;
     for (i = 0; i < height; i++)
     {
+        suml = 0.0f;
         for (j = 0; j < width; j++)
-            sum += (old[j] - new[j]) * (old[j] - new[j]);
-
+        {
+            delta = (float)old[j] - (float)new[j];
+            suml += delta * delta;
+        }
         old += orig_stride;
         new += cmp_stride;
+        sum += suml;
     }
 
-    ret  = (float) sum / (float) (width * height);
+    ret  = sum / (float) (width * height);
     ret  = 10.0f * log10(65025.0f / ret);
 
     if (max > 128)
@@ -58,19 +61,18 @@ static float factor_psnr (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_
 static float factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_stride, int width, int height, uint8_t max)
 {
     uint8_t *old, *new;
-    float ret;
-    float sum;
-    float cfmax, cf;
-    int i, j;
-    int cnt;
+    float suml, sum, cnf, cfmax, cf, ret;
+    int i, j, cnt;
 
-    sum = 0.0;
-    cnt = 0;
     old = orig;
     new = cmp;
 
+    cnf = 0.0f;
+    sum = 0.0f;
     for (i = 0; i < height; i++)
     {
+        cnt = 0;
+        suml = 0.0f;
         for (j = 7; j < width - 2; j += 8)
         {
             int o0, n0, o1h, n1h, o1nh, n1nh, o2h, n2h, d0, d1h, d1nh, d2h;
@@ -94,13 +96,14 @@ static float factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_s
             calc /= (0.0001 + abs(d1nh - d0) + abs(d1h - d2h)) * 0.5f;
 
             if (calc > 5.0f)
-                sum += 1.0f;
+                suml += 1.0f;
             else if (calc > 2.0)
-                sum += (calc - 2.0f) / (5.0f - 2.0f);
+                suml += (calc - 2.0f) / (5.0f - 2.0f);
         }
-
         old += orig_stride;
         new += cmp_stride;
+        cnf += (float)cnt;
+        sum += suml;
     }
 
     old = orig + 7 * orig_stride;
@@ -108,6 +111,8 @@ static float factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_s
 
     for (i = 7; i < height - 2; i += 8)
     {
+        cnt = 0;
+        suml = 0.0f;
         for (j = 0; j < width; j++)
         {
             int o0, n0, o1v, n1v, o1nv, n1nv, o2v, n2v, d0, d1v, d1nv, d2v;
@@ -131,25 +136,29 @@ static float factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_s
             calc /= (0.0001f + abs(d1nv - d0) + abs(d1v - d2v)) * 0.5f;
 
             if (calc > 5.0f)
-                sum += 1.0f;
+                suml += 1.0f;
             else if (calc > 2.0f)
-                sum += (calc - 2.0f) / (5.0f - 2.0f);
+                suml += (calc - 2.0f) / (5.0f - 2.0f);
         }
-
         old += 8 * orig_stride;
         new += 8 * cmp_stride;
+        cnf += (float)cnt;
+        sum += suml;
     }
 
-    ret = 1 - (sum / (float) cnt);
+    ret = 1.0f;
+    if (cnf > 0.0f)
+        ret -= (sum / cnf);
 
     if (max > 128)
         cfmax = 0.65f;
     else
-        cfmax = 1.0f - 0.35f * (float) max / 128.0f;
+        cfmax = 1.0f - 0.35f * (float)max / 128.0f;
 
-    cf = MAX(cfmax, MIN(1.0f, 0.25f + (1000.0f * (float) cnt) / sum));
+    cf = MAX(cfmax, MIN(1.0f, 0.25f + (1000.0f * cnf) / sum));
+    ret *= cf;
 
-    return ret * cf;
+    return ret;
 }
 
 static uint8_t maxluma (uint8_t *buf, int stride, int width, int height)
@@ -529,7 +538,7 @@ float metric_nhw (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
             resd = abs(res - resr);
             if (resd > 0)
             {
-                delta = abs(new[scan] - old[scan]);
+                delta = abs((float)new[scan] - (float)old[scan]);
                 if (delta > 0)
                 {
                     amountl += (delta * delta) * resd;
@@ -541,12 +550,14 @@ float metric_nhw (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
         amount += amountl;
         significance += significancel;
     }
-    neatness = (significance > 0.0f) ? (amount / significance) : 1.0f;
+    neatness = (significance > 0.0f) ? (amount / significance) : 0.0f;
+    neatness = sqrt(neatness);
+    neatness /= 255.0f;
 
     return neatness;
 }
 
 char* libsmallfry_version (void)
 {
-	return (char*) LIBSMALLFRYVERSION;
+    return (char*) LIBSMALLFRYVERSION;
 }
