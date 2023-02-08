@@ -18,9 +18,9 @@
 #define SMALLFLY_METRIC_H
 
 float metric_smallfry (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
-float metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
 float metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
 float metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, int radius);
+float metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height, int radius);
 float metric_nhw (uint8_t *inbuf, uint8_t *outbuf, int width, int height);
 float cor_sigma (float cor);
 char* libsmallfry_version (void);

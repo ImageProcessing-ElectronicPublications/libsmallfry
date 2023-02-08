@@ -22,8 +22,10 @@
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#define LIBSMALLFRYVERSION "0.1.3"
+#define LIBSMALLFRYVERSION "0.2.0"
 
+/* PSNR(a,b) = 10*log10(MAX * MAX / E((a-b)*(a-b)))
+ * MAX = 255 */
 static float factor_psnr (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_stride, int width, int height, uint8_t max)
 {
     uint8_t *old, *new;
@@ -58,6 +60,8 @@ static float factor_psnr (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_
     return MAX(MIN(ret, 1.0f), 0.0f);
 }
 
+/* AAE(a,b) = K * E(a(GRID) - b(GRID))
+ * GRID = {{0,7},8} */
 static float factor_aae (uint8_t *orig, uint8_t *cmp, int orig_stride, int cmp_stride, int width, int height, uint8_t max)
 {
     uint8_t *old, *new;
@@ -178,6 +182,9 @@ static uint8_t maxluma (uint8_t *buf, int stride, int width, int height)
     return max;
 }
 
+/* SMALLFRY(a,b) = (K1 * PSNR(a,b) + K2 * AAE(a,b))
+ * K1 = 37.1891885161239
+ * K2 = 78.5328607296973 */
 float metric_smallfry (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
 {
     float p, a, b;
@@ -193,107 +200,7 @@ float metric_smallfry (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
     return b;
 }
 
-float metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
-{
-    uint8_t *old, *new;
-    float sharpenbad, exp1n, k332, k255p;
-    float im1, im2, imf1, imf2, ims1, ims2, imd, imd1, imd2, imdc;
-    float sumd, sumd1, sumd2, sumdc, sumdl, sumd1l, sumd2l, sumdcl;
-    int i, j, i0, j0, i1, j1, i2, j2, k, ki0, ki, kj, n;
-
-    old = inbuf;
-    new = outbuf;
-    exp1n = exp(-1);
-    k332 = (3.0f * 3.0f * 2.0f + 1.0f) / (3.0f * 3.0f * 2.0f - 1.0f);
-    k255p = 1.0f / 255.0f;
-
-    k = 0;
-    sumd = 0.0f;
-    sumd1 = 0.0f;
-    sumd2 = 0.0f;
-    sumdc = 0.0f;
-    for (i = 0; i < height; i++)
-    {
-        sumdl = 0.0f;
-        sumd1l = 0.0f;
-        sumd2l = 0.0f;
-        sumdcl = 0.0f;
-        i0 = i - 1;
-        if (i0 < 0) {i0 = 0;}
-        i2 = i + 2;
-        if (i2 > height) {i2 = height;}
-        ki0 = i0 * width;
-        for (j = 0; j < width; j++)
-        {
-            j0 = j - 1;
-            if (j0 < 0) {j0 = 0;}
-            j2 = j + 2;
-            if (j2 > width) {j2 = width;}
-            im1 = (float)old[k];
-            im2 = (float)new[k];
-            n = 0;
-            ims1 = 0.0f;
-            ims2 = 0.0f;
-            ki = ki0;
-            for (i1 = i0; i1 < i2; i1++)
-            {
-                for (j1 = j0; j1 < j2; j1++)
-                {
-                    kj = ki + j1;
-                    imf1 = (float)old[kj];
-                    ims1 += imf1;
-                    imf2 = (float)new[kj];
-                    ims2 += imf2;
-                    n++;
-                }
-                ki += width;
-            }
-            ims1 /= (float)n;
-            ims2 /= (float)n;
-            imd1 = im1 - ims1;
-            imd2 = im2 - ims2;
-            im1 += imd1;
-            im2 += imd2;
-            imd = im1 - im2;
-            imd1 *= k255p;
-            imd2 *= k255p;
-            imd *= k255p;
-            imd *= imd;
-            imdc = imd1 * imd2;
-            imd1 *= imd1;
-            imd2 *= imd2;
-            sumdl += imd;
-            sumd1l += imd1;
-            sumd2l += imd2;
-            sumdcl += imdc;
-            k++;
-        }
-        sumd += sumdl;
-        sumd1 += sumd1l;
-        sumd2 += sumd2l;
-        sumdc += sumdcl;
-    }
-    sumd2 *= sumd1;
-    if (sumd2 > 0.0f)
-    {
-        sumd /= sumd2;
-        sumd *= sumdc;
-        sumd *= 2.0f;
-    } else {
-        sumd /= (float)height;
-        sumd /= (float)width;
-    }
-    if (sumd < 0.0f) {sumd = -sumd;}
-    sumd = sqrt(sumd);
-    sumd = -sumd;
-    sumd *= exp1n;
-    sumd += k332;
-
-    sharpenbad = sumd;
-
-    return sharpenbad;
-}
-
+/* COR(a,b) = E(a * b) / sqrt(E(a * a) * E(b * b)) */
 float metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
 {
     uint8_t *old, *new;
@@ -365,6 +272,7 @@ float metric_cor (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
     return cor;
 }
 
+/* CORSH(a,b) = E(GR(a,r) * GR(b,r)) / sqrt(E(GR(a,r) * GR(a,r)) * E(GR(b,r) * GR(b,r))) */
 float metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, int radius)
 {
     uint8_t *old, *new;
@@ -469,6 +377,76 @@ float metric_corsharp (uint8_t *inbuf, uint8_t *outbuf, int width, int height, i
     return cor;
 }
 
+/* SHARPENBAD(a,b,r) = (2* GR(a,r) * GR(b,r) + C) / (GR(a,r) * GR(a,r) + GR(b,r) * GR(b,r) + C)
+ * GR(a,r) = a * n - E(a,r)
+ * GR(b,r) = b * n - E(b,r)
+ * C = 1 */
+float metric_sharpenbad (uint8_t *inbuf, uint8_t *outbuf, int width, int height, int radius)
+{
+    uint8_t *ref, *cmp;
+    int y, x, y0, x0, y1, x1, yf, xf, di, n;
+    size_t k, ky0, kx0, kf0, kf;
+    float sum1, sum2, ssl, ss, sql, sq, si, sharpenbad, c;
+
+    ref = inbuf;
+    cmp = outbuf;
+    sharpenbad = 0.0f;
+    c = 1.0f;
+    if (radius > 0)
+    {
+        ss = 0.0f;
+        sq = 0.0f;
+        k = 0;
+        for (y = 0; y < height; y++)
+        {
+            y0 = y - radius;
+            y0 = (y0 < 0) ? 0 : y0;
+            y1 = y + radius + 1;
+            y1 = (y1 < height) ? y1 : height;
+            ky0 = y0 * width;
+            ssl = 0.0f;
+            sql = 0.0f;
+            for (x = 0; x < width; x++)
+            {
+                x0 = x - radius;
+                x0 = (x0 < 0) ? 0 : x0;
+                x1 = x + radius + 1;
+                x1 = (x1 < width) ? x1 : width;
+                kx0 = x0;
+                kf0 = ky0 + kx0;
+                kf = kf0;
+                sum1 = 0.0f;
+                sum2 = 0.0f;
+                n = 0;
+                for (yf = y0; yf < y1; yf++)
+                {
+                    for (xf = x0; xf < x1; xf++)
+                    {
+                        sum1 -= (float)ref[kf];
+                        sum2 -= (float)cmp[kf];
+                        n++;
+                        kf++;
+                    }
+                    kf0 += width;
+                    kf = kf0;
+                }
+                n = (n > 0) ? n : 1;
+                sum1 += (float)(n * (int)ref[k]);
+                sum2 += (float)(n * (int)cmp[k]);
+                ssl += (2.0f * sum1 * sum2 + c);
+                sql += ((sum1 * sum1) + (sum2 * sum2) + c);
+                k++;
+            }
+            ss += ssl;
+            sq += sql;
+        }
+    }
+    sharpenbad = ss / sq;
+
+    return sharpenbad;
+}
+
+/* S(M) = 1 - sqrt(1 - M * M) */
 float cor_sigma (float cor)
 {
     float sigma;
@@ -494,6 +472,7 @@ int index_clamp (int i, int a, int b)
     return buf[(int)(i > a) + (int)(i > b)];
 }
 
+/* GR(a,1) */
 int pix_sharpen3 (uint8_t *inbuf, int width, int height, int i, int j, int k)
 {
     int res = 0, di0, di1, dj0, dj1;
@@ -513,9 +492,13 @@ int pix_sharpen3 (uint8_t *inbuf, int width, int height, int i, int j, int k)
     res -= inbuf[k + di0 + dj1];
     res -= inbuf[k + di1 + dj0];
     res -= inbuf[k + di1 + dj1];
+
     return res;
 }
 
+/* NHW(a,b,r) = E((a - b) * (a - b) * (GR(a,r) - GR(b,r))) /  E(GR(a,r) - GR(b,r))
+ * GR(a,r) = a * n - E(a,r)
+ * GR(b,r) = b * n - E(b,r) */
 float metric_nhw (uint8_t *inbuf, uint8_t *outbuf, int width, int height)
 {
     uint8_t *old, *new;
