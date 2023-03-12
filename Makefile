@@ -1,7 +1,7 @@
 PNAME=smallfry
 CC = gcc
-CFLAGS=-Wall
-LDFLAGS=-s
+CFLAGS+=-O3 -Wall
+LDFLAGS+=-s
 LIBS=-lm
 ARC = ar rcs
 LN = @ln -fsv
